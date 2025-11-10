@@ -1,99 +1,80 @@
-import { CheckCircle, ExternalLink, Globe, Lock, Share2, Sparkles } from 'lucide-react';
+// src/components/Features.tsx
+import { Globe, ShieldCheck, ScanEye, WalletMinimal } from "lucide-react";
+import SpotlightCard from "./aceternity/SpotlightCard";
+
+const items = [
+  {
+    icon: Globe,
+    title: "Public Profile",
+    bullets: [
+      "Professional URL: aurin.com/username",
+      "Stats dashboard & verification",
+      "Achievement timeline by date",
+      "Skills & categories organized",
+    ],
+  },
+  {
+    icon: ShieldCheck,
+    title: "Blockchain Verified",
+    bullets: [
+      "Ethereum-based smart contracts",
+      "Immutable records on Base L2",
+      "One-click verification",
+      "Migrate off-chain → on-chain anytime",
+    ],
+  },
+  {
+    icon: ScanEye,
+    title: "Instant Proof",
+    bullets: [
+      "QR code for scanning",
+      "Verifier page per badge",
+      "Issuer signature & tx hash",
+      "Public share links",
+    ],
+  },
+  {
+    icon: WalletMinimal,
+    title: "Wallet Optional",
+    bullets: [
+      "Claim off-chain first",
+      "Link wallet later",
+      "On-chain mint when ready",
+      "No friction for recipients",
+    ],
+  },
+];
 
 export default function Features() {
-  const features = [
-    {
-      icon: Globe,
-      title: 'PUBLIC PROFILE',
-      description: 'Clean, professional URL: aurin.com/username',
-      details: [
-        'Stats dashboard with total badges and verifications',
-        'Achievement timeline with chronological history',
-        'Skills and categories organized beautifully',
-        'Activity heatmap like GitHub contributions',
-      ],
-    },
-    {
-      icon: Lock,
-      title: 'BLOCKCHAIN VERIFIED',
-      description: 'Every badge is permanently on-chain',
-      details: [
-        'Ethereum-based smart contracts',
-        'Immutable achievement records',
-        'One-click verification for employers',
-        'QR code scanning for instant proof',
-      ],
-    },
-    {
-      icon: Share2,
-      title: 'EASY SHARING',
-      description: 'Share your achievements everywhere',
-      details: [
-        'Direct profile links for LinkedIn, GitHub',
-        'Individual badge sharing capability',
-        'Export to PDF for traditional resumes',
-        'Social media integrations built-in',
-      ],
-    },
-    {
-      icon: Sparkles,
-      title: 'DISCOVERY',
-      description: 'Find and earn new badges',
-      details: [
-        'Browse badges by category and issuer',
-        'See trending achievements in your field',
-        'Discover opportunities to earn more',
-        'Connect with verified badge issuers',
-      ],
-    },
-  ];
-
   return (
-    <section id="features" className="py-32 px-4 md:px-8 bg-[#0A0A0A]">
-      <div className="max-w-7xl mx-auto space-y-20">
-        <div className="text-center space-y-6 animate-slide-up">
-          <h2 className="text-5xl md:text-7xl font-bold tracking-tight">
-            Everything You <span className="gradient-text">Need</span>
-          </h2>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            A complete platform to showcase, verify, and share your professional achievements
-          </p>
-        </div>
+    <section className="py-16">
+      <div className="max-w-6xl mx-auto px-6">
+        <h2 className="text-3xl md:text-4xl font-bold text-center">Everything You Need</h2>
+        <p className="text-gray-400 text-center mt-2">
+          A complete platform to showcase, verify, and share achievements.
+        </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="premium-card p-10 space-y-6 hover-lift hover-glow smooth-transition"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center border border-emerald-500/20">
-                <feature.icon size={32} className="text-emerald-400" />
+        <div className="mt-10 grid md:grid-cols-2 gap-6">
+          {items.map((it, i) => (
+            <SpotlightCard key={i}>
+              <div className="flex items-start gap-4">
+                <div className="rounded-2xl bg-emerald-500/10 p-3 border border-emerald-500/20">
+                  <it.icon className="text-emerald-300" size={22} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-lg font-semibold">{it.title}</div>
+                  <ul className="mt-3 grid gap-2 text-gray-300 text-sm">
+                    {it.bullets.map((b, bi) => (
+                      <li key={bi} className="flex items-start gap-2">
+                        <span className="mt-[6px] h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-
-              <div className="space-y-3">
-                <h3 className="text-2xl font-bold tracking-tight capitalize">
-                  {feature.title.toLowerCase()}
-                </h3>
-                <p className="text-gray-400 leading-relaxed">{feature.description}</p>
-              </div>
-
-              <ul className="space-y-3">
-                {feature.details.map((detail, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-gray-400">
-                    <CheckCircle size={18} className="flex-shrink-0 mt-0.5 text-emerald-500" />
-                    <span>{detail}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            </SpotlightCard>
           ))}
-        </div>
-
-        <div className="text-center">
-          <button className="premium-button px-10 py-5 font-semibold text-lg text-white inline-flex items-center gap-3">
-            Get Started Free
-            <ExternalLink size={20} />
-          </button>
         </div>
       </div>
     </section>

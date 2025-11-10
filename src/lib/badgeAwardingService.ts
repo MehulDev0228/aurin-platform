@@ -1,103 +1,63 @@
+// src/lib/badgeAwardingService.ts
 import { supabase } from './supabase';
+import { blockchainEnabled, ENV } from './env';
+import { mintBadge } from './blockchain';
 
 export interface AwardBadgeParams {
-  userId: string;
-  badgeId: string;
-  metadata?: Record<string, any>;
+  userId: string;       // Supabase user UUID
+  badgeId: string;      // DB badge id
+  toAddress?: string;   // wallet (required if chain enabled)
+  tokenURI?: string;    // ERC721 metadata URI (optional for 1155)
+  tokenId?: number;     // ERC1155 id
+  amount?: number;      // ERC1155 amount
   isFeatured?: boolean;
+  makePublic?: boolean;
 }
 
 export async function awardBadge(params: AwardBadgeParams) {
-  try {
-    const { data: achievement, error } = await supabase
-      .from('achievements')
-      .insert({
-        user_id: params.userId,
-        badge_id: params.badgeId,
-        is_featured: params.isFeatured || false,
-        metadata: params.metadata || {},
-        blockchain_verified: false,
-        nft_minted: false,
-      })
-      .select(`
-        *,
-        badges (
-          id,
-          name,
-          description,
-          image_url,
-          category
-        )
-      `)
-      .single();
+  let txHash: string | null = null;
+  let mintedTokenId: string | null = null;
+  let chainVerified = false;
 
-    if (error) throw error;
-
-    await supabase
-      .from('badges')
-      .update({ total_issued: supabase.rpc('increment_total_issued', { badge_id: params.badgeId }) })
-      .eq('id', params.badgeId);
-
-    return { success: true, achievement };
-  } catch (error: any) {
-    console.error('Award badge error:', error);
-    return { success: false, error: error.message };
+  if (blockchainEnabled()) {
+    if (!params.toAddress) throw new Error('Wallet address (toAddress) required for on-chain minting.');
+    const result = await mintBadge({
+      toAddress: params.toAddress,
+      tokenURI: params.tokenURI || '',
+      tokenId: params.tokenId,
+      amount: params.amount,
+    });
+    txHash = result.txHash;
+    mintedTokenId = result.tokenId ?? null;
+    chainVerified = true;
   }
+
+  const { data: achievement, error } = await supabase
+    .from('achievements')
+    .insert({
+      user_id: params.userId,
+      badge_id: params.badgeId,
+      token_id: mintedTokenId,
+      transaction_hash: txHash,
+      blockchain_verified: chainVerified,
+      metadata: { tokenURI: params.tokenURI, chainId: ENV.CHAIN_ID, standard: ENV.CONTRACT_STANDARD },
+      is_featured: !!params.isFeatured,
+      is_public: params.makePublic ?? true,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return achievement;
 }
 
-export async function awardBadgeToMultipleUsers(userIds: string[], badgeId: string) {
-  try {
-    const achievements = userIds.map(userId => ({
-      user_id: userId,
-      badge_id: badgeId,
-      blockchain_verified: false,
-      nft_minted: false,
-    }));
-
-    const { data, error } = await supabase
-      .from('achievements')
-      .insert(achievements)
-      .select();
-
-    if (error) throw error;
-
-    return { success: true, count: data.length };
-  } catch (error: any) {
-    console.error('Award badge to multiple users error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function removeBadge(achievementId: string) {
-  try {
-    const { error } = await supabase
-      .from('achievements')
-      .delete()
-      .eq('id', achievementId);
-
-    if (error) throw error;
-
-    return { success: true };
-  } catch (error: any) {
-    console.error('Remove badge error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function checkUserHasBadge(userId: string, badgeId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('achievements')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('badge_id', badgeId)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    return !!data;
-  } catch (error) {
-    console.error('Check user has badge error:', error);
-    return false;
-  }
+export async function userHasBadge(userId: string, badgeId: string) {
+  const { data, error } = await supabase
+    .from('achievements')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('badge_id', badgeId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
 }

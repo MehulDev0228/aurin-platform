@@ -1,140 +1,200 @@
-import { Award, User, LogOut, Settings as SettingsIcon } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+// src/components/Navbar.tsx
+import { Link, NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Menu, X, ChevronDown, LogIn, LogOut, User, Wallet } from 'lucide-react';
+
+// Safe auth access (prevents crashes if navbar renders before/without provider)
+function useAuthOptional(): { user: any; signOut?: () => Promise<void> } | null {
+  try {
+    const { useAuth } = require('../contexts/AuthContext');
+    return useAuth();
+  } catch {
+    return null;
+  }
+}
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
+  const auth = useAuthOptional();
+  const user = auth?.user ?? null;
+
+  const [open, setOpen] = useState(false);
+  const [elevated, setElevated] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setElevated(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
+  // aceternity-ish tokens (glass + subtle ring/underline)
+  const base = 'relative px-3 py-2 rounded-lg text-sm transition';
+  const idle = 'text-gray-300 hover:text-white';
+  const active = 'text-white';
+  const cls = ({ isActive }: { isActive: boolean }) =>
+    `${base} ${isActive ? active : idle}`;
+
+  const Underline = () => (
+    <span className="pointer-events-none absolute inset-x-2 -bottom-[2px] h-px bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 group-hover:opacity-100 transition"></span>
+  );
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
-      <div className="max-w-[1600px] mx-auto">
-        <div
-          className={`flex items-center justify-between px-8 py-4 rounded-2xl transition-all duration-500 ${
-            scrolled
-              ? 'bg-black/80 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/50'
-              : 'bg-transparent'
-          }`}
+    <header
+      className={`sticky top-0 z-40 border-b border-zinc-900 bg-black/70 backdrop-blur ${
+        elevated ? 'shadow-[0_1px_0_0_rgba(255,255,255,0.04)]' : ''
+      }`}
+    >
+      <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between">
+        {/* Brand */}
+        <Link
+          to="/"
+          className="text-white font-semibold tracking-wide inline-flex items-center gap-2"
         >
-          <div className="flex items-center gap-16">
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-2xl shadow-emerald-500/50 group-hover:scale-110 transition-transform duration-500">
-                  <Award size={20} className="text-black" />
-                </div>
-              </div>
-              <span className="font-semibold text-xl tracking-tight">Aurin</span>
-            </Link>
+          AURIN
+        </Link>
 
-            <div className="hidden lg:flex items-center gap-2">
-              <a
-                href="#features"
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all duration-300"
-              >
-                Features
-              </a>
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1 ml-4">
+          <NavLink to="/explore" className={(s) => `${cls(s)} group`}>
+            Explore <Underline />
+          </NavLink>
+          <NavLink to="/events" className={(s) => `${cls(s)} group`}>
+            Events <Underline />
+          </NavLink>
+
+          {/* Resources dropdown */}
+          <div className="relative group">
+            <button className={`${base} ${idle} inline-flex items-center gap-1`}>
+              Resources <ChevronDown size={16} />
+            </button>
+            <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition
+                            absolute mt-2 min-w-[220px] rounded-2xl border border-zinc-800 bg-black/95 p-1">
               <Link
-                to="/explore"
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all duration-300"
+                to="/terms"
+                className="block px-3 py-2 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/10"
               >
-                Explore
+                Terms
               </Link>
-              <a
-                href="#how-it-works"
-                className="px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all duration-300"
+              <Link
+                to="/privacy"
+                className="block px-3 py-2 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/10"
               >
-                How it Works
-              </a>
+                Privacy
+              </Link>
             </div>
           </div>
+        </nav>
 
-          <div className="flex items-center gap-4">
+        {/* Desktop actions */}
+        <div className="hidden md:flex items-center gap-2">
+          {user ? (
+            <>
+              <NavLink to="/dashboard" className={(s) => `${cls(s)} group`}>
+                <span className="inline-flex items-center gap-2">
+                  <User size={16} /> Dashboard
+                </span>
+              </NavLink>
+              <NavLink to="/wallet" className={(s) => `${cls(s)} group`}>
+                <span className="inline-flex items-center gap-2">
+                  <Wallet size={16} /> Wallet
+                </span>
+              </NavLink>
+              <button
+                onClick={() => auth?.signOut?.()}
+                className="px-3 py-2 rounded-xl text-sm text-black bg-white hover:opacity-90 transition"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <LogOut size={16} /> Sign out
+                </span>
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" className={(s) => `${cls(s)} group`}>
+                <span className="inline-flex items-center gap-2">
+                  <LogIn size={16} /> Login
+                </span>
+              </NavLink>
+              <Link
+                to="/signup"
+                className="px-3 py-2 rounded-xl text-sm text-black bg-white hover:opacity-90 transition"
+              >
+                Sign up
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* Mobile */}
+        <button
+          className="md:hidden inline-flex w-10 h-10 items-center justify-center rounded-lg text-gray-200 hover:text-white hover:bg-white/10 transition"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Toggle menu"
+        >
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      {/* Mobile sheet */}
+      {open && (
+        <div className="md:hidden border-t border-zinc-900 bg-black/95">
+          <div className="max-w-6xl mx-auto px-4 py-3 grid gap-1">
+            <NavLink to="/explore" className={cls} onClick={() => setOpen(false)}>
+              Explore
+            </NavLink>
+            <NavLink to="/events" className={cls} onClick={() => setOpen(false)}>
+              Events
+            </NavLink>
+            <Link to="/terms" className={`${base} ${idle}`} onClick={() => setOpen(false)}>
+              Terms
+            </Link>
+            <Link to="/privacy" className={`${base} ${idle}`} onClick={() => setOpen(false)}>
+              Privacy
+            </Link>
+            <div className="h-2" />
             {user ? (
-              <div className="relative">
+              <>
+                <NavLink to="/dashboard" className={cls} onClick={() => setOpen(false)}>
+                  <span className="inline-flex items-center gap-2">
+                    <User size={16} /> Dashboard
+                  </span>
+                </NavLink>
+                <NavLink to="/wallet" className={cls} onClick={() => setOpen(false)}>
+                  <span className="inline-flex items-center gap-2">
+                    <Wallet size={16} /> Wallet
+                  </span>
+                </NavLink>
                 <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-3 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
+                  onClick={async () => {
+                    setOpen(false);
+                    await auth?.signOut?.();
+                  }}
+                  className="mt-1 px-3 py-2 rounded-xl text-sm text-black bg-white hover:opacity-90 transition text-left"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-sm font-bold text-black">
-                    {user.email?.[0]?.toUpperCase()}
-                  </div>
-                  <span className="hidden md:block text-sm font-medium">{user.email}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <LogOut size={16} /> Sign out
+                  </span>
                 </button>
-
-                {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-64 bg-black/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden">
-                    <div className="p-3 border-b border-white/10">
-                      <p className="text-sm font-medium truncate">{user.email}</p>
-                      <p className="text-xs text-gray-500">User ID: {user.id.slice(0, 8)}...</p>
-                    </div>
-                    <div className="p-2">
-                      <Link
-                        to="/dashboard"
-                        className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5 rounded-lg transition-colors"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        <User size={16} />
-                        Dashboard
-                      </Link>
-                      <Link
-                        to="/settings"
-                        className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5 rounded-lg transition-colors"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        <SettingsIcon size={16} />
-                        Settings
-                      </Link>
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                      >
-                        <LogOut size={16} />
-                        Sign out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              </>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  className="hidden md:block px-6 py-2.5 text-sm font-medium text-white hover:text-emerald-400 transition-colors duration-300"
-                >
-                  Sign in
-                </Link>
+                <NavLink to="/login" className={cls} onClick={() => setOpen(false)}>
+                  <span className="inline-flex items-center gap-2">
+                    <LogIn size={16} /> Login
+                  </span>
+                </NavLink>
                 <Link
                   to="/signup"
-                  className="relative group overflow-hidden"
+                  className="px-3 py-2 rounded-xl text-sm text-black bg-white hover:opacity-90 transition"
+                  onClick={() => setOpen(false)}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative px-6 py-2.5 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-xl text-sm font-semibold text-black shadow-2xl shadow-emerald-500/30 group-hover:scale-105 transition-transform duration-300">
-                    Get started
-                  </div>
+                  Sign up
                 </Link>
               </>
             )}
           </div>
         </div>
-      </div>
-    </nav>
+      )}
+    </header>
   );
 }

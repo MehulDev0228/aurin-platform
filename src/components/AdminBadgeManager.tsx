@@ -1,228 +1,116 @@
-import { useState, useEffect } from 'react';
-import { Award, Users, CheckCircle, X } from 'lucide-react';
+// src/components/AdminBadgeManager.tsx
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { awardBadge, awardBadgeToMultipleUsers } from '../lib/badgeAwardingService';
-import { useToast } from './Toast';
+import { awardBadge } from '../lib/badgeAwardingService';
+import { blockchainEnabled } from '../lib/env';
 
-interface AdminBadgeManagerProps {
-  eventId?: string;
-  onClose?: () => void;
-}
+type UserLite = { id: string; username: string | null; email: string | null; wallet_address: string | null };
+type BadgeLite = { id: string; name: string; token_uri: string | null; token_id: number | null };
 
-export default function AdminBadgeManager({ eventId, onClose }: AdminBadgeManagerProps) {
-  const [badges, setBadges] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [selectedBadge, setSelectedBadge] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [issuing, setIssuing] = useState(false);
-  const { showToast } = useToast();
+export default function AdminBadgeManager() {
+  const [q, setQ] = useState('');
+  const [users, setUsers] = useState<UserLite[]>([]);
+  const [badges, setBadges] = useState<BadgeLite[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string>('');
+  const [selectedBadge, setSelectedBadge] = useState<string>('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, [eventId]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const { data: badgesData } = await supabase
+    (async () => {
+      const { data: badgeList, error } = await supabase
         .from('badges')
-        .select('*')
-        .eq('is_active', true)
+        .select('id, name, token_uri, token_id')
         .order('name');
+      if (!error && badgeList) setBadges(badgeList as any);
+    })();
+  }, []);
 
-      setBadges(badgesData || []);
-
-      if (eventId) {
-        const { data: enrollmentsData } = await supabase
-          .from('event_enrollments')
-          .select(`
-            user_id,
-            profiles:user_id (
-              id,
-              full_name,
-              username,
-              avatar_url
-            )
-          `)
-          .eq('event_id', eventId)
-          .in('status', ['attended', 'completed']);
-
-        setUsers(enrollmentsData?.map(e => e.profiles).filter(Boolean) || []);
-      } else {
-        const { data: usersData } = await supabase
-          .from('profiles')
-          .select('id, full_name, username, avatar_url')
-          .order('full_name')
-          .limit(100);
-
-        setUsers(usersData || []);
-      }
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      showToast('Failed to load data', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const searchUsers = async () => {
+    setMsg(null); setErr(null);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, email, wallet_address')
+      .or(`username.ilike.%${q}%,email.ilike.%${q}%`)
+      .limit(10);
+    if (error) { setErr(error.message); return; }
+    setUsers((data || []) as any);
   };
 
-  const handleIssueBadges = async () => {
-    if (!selectedBadge || selectedUsers.length === 0) {
-      showToast('Please select a badge and at least one user', 'warning');
-      return;
-    }
-
-    setIssuing(true);
+  const doAward = async () => {
+    setBusy(true); setErr(null); setMsg(null);
     try {
-      if (selectedUsers.length === 1) {
-        const result = await awardBadge({
-          userId: selectedUsers[0],
-          badgeId: selectedBadge,
-        });
+      const user = users.find(u => u.id === selectedUser);
+      const badge = badges.find(b => b.id === selectedBadge);
+      if (!user || !badge) throw new Error('Select a user and badge.');
 
-        if (result.success) {
-          showToast('Badge awarded successfully!', 'success');
-        } else {
-          showToast(result.error || 'Failed to award badge', 'error');
-        }
-      } else {
-        const result = await awardBadgeToMultipleUsers(selectedUsers, selectedBadge);
+      const shouldMint = blockchainEnabled() && !!user.wallet_address;
+      const achievement = await awardBadge({
+        userId: user.id,
+        badgeId: badge.id,
+        toAddress: shouldMint ? user.wallet_address! : undefined,
+        tokenURI: badge.token_uri || undefined,
+        tokenId: badge.token_id ?? undefined,
+        amount: 1,
+        isFeatured: true,
+        makePublic: true,
+      });
 
-        if (result.success) {
-          showToast(`Badge awarded to ${result.count} users!`, 'success');
-        } else {
-          showToast(result.error || 'Failed to award badges', 'error');
-        }
-      }
-
-      setSelectedUsers([]);
-      setSelectedBadge('');
-      if (onClose) onClose();
-    } catch (error: any) {
-      showToast(error.message || 'Failed to issue badges', 'error');
+      setMsg(`Awarded ${badge.name} to ${user.username || user.email}. ${achievement.transaction_hash ? `Tx: ${achievement.transaction_hash}` : '(off-chain)'}`);
+    } catch (e: any) {
+      setErr(e?.message || 'Failed to award badge.');
     } finally {
-      setIssuing(false);
-    }
-  };
-
-  const toggleUserSelection = (userId: string) => {
-    setSelectedUsers(prev =>
-      prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
-
-  const selectAll = () => {
-    if (selectedUsers.length === users.length) {
-      setSelectedUsers([]);
-    } else {
-      setSelectedUsers(users.map(u => u.id));
+      setBusy(false);
     }
   };
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Award size={24} className="text-emerald-400" />
-          <h2 className="text-2xl font-bold">Issue Badges</h2>
+    <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-4">
+      <h3 className="text-lg font-semibold text-white">Award Badge</h3>
+      <div className="mt-4 grid md:grid-cols-3 gap-3">
+        <div className="md:col-span-2">
+          <input
+            className="w-full px-3 py-2 rounded-xl bg-black/40 border border-zinc-800 text-white"
+            placeholder="Search user by username or email"
+            value={q} onChange={e => setQ(e.target.value)}
+          />
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <X size={20} />
-          </button>
-        )}
+        <button onClick={searchUsers} className="px-4 py-2 rounded-xl bg-white text-black font-semibold">Search</button>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium mb-2">Select Badge</label>
-            <select
-              value={selectedBadge}
-              onChange={(e) => setSelectedBadge(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="">Choose a badge...</option>
-              {badges.map(badge => (
-                <option key={badge.id} value={badge.id}>
-                  {badge.name} - {badge.category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium">Select Users ({selectedUsers.length} selected)</label>
-              <button
-                onClick={selectAll}
-                className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-              >
-                {selectedUsers.length === users.length ? 'Deselect All' : 'Select All'}
-              </button>
-            </div>
-
-            <div className="max-h-96 overflow-y-auto space-y-2 border border-white/10 rounded-xl p-4">
-              {users.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Users size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No users found</p>
-                </div>
-              ) : (
-                users.map(user => (
-                  <button
-                    key={user.id}
-                    onClick={() => toggleUserSelection(user.id)}
-                    className={`w-full p-3 flex items-center gap-3 rounded-lg transition-all ${
-                      selectedUsers.includes(user.id)
-                        ? 'bg-emerald-500/20 border-2 border-emerald-500'
-                        : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-sm font-bold flex-shrink-0">
-                      {user.username?.[0]?.toUpperCase()}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="font-medium">{user.full_name}</div>
-                      <div className="text-sm text-gray-500">@{user.username}</div>
-                    </div>
-                    {selectedUsers.includes(user.id) && (
-                      <CheckCircle size={20} className="text-emerald-400" />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={handleIssueBadges}
-            disabled={issuing || !selectedBadge || selectedUsers.length === 0}
-            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed rounded-xl font-semibold transition-all shadow-lg shadow-emerald-500/20 disabled:shadow-none flex items-center justify-center gap-2"
-          >
-            {issuing ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Issuing...
-              </>
-            ) : (
-              <>
-                <Award size={20} />
-                Issue Badge to {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
-              </>
-            )}
-          </button>
+      {users.length > 0 && (
+        <div className="mt-4">
+          <label className="text-sm text-gray-300">Select user</label>
+          <select className="w-full mt-1 px-3 py-2 rounded-xl bg-black/40 border border-zinc-800 text-white"
+                  value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
+            <option value="">-- choose --</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {(u.username || u.email) + (u.wallet_address ? ` · ${u.wallet_address.slice(0,6)}…${u.wallet_address.slice(-4)}` : ' · no wallet')}
+              </option>
+            ))}
+          </select>
         </div>
       )}
+
+      <div className="mt-4">
+        <label className="text-sm text-gray-300">Select badge</label>
+        <select className="w-full mt-1 px-3 py-2 rounded-xl bg-black/40 border border-zinc-800 text-white"
+                value={selectedBadge} onChange={e => setSelectedBadge(e.target.value)}>
+          <option value="">-- choose --</option>
+          {badges.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
+        </select>
+      </div>
+
+      <div className="mt-4">
+        <button disabled={busy} onClick={doAward} className="px-5 py-2 rounded-xl bg-white text-black font-semibold disabled:opacity-60">
+          {busy ? 'Awarding…' : 'Award badge'}
+        </button>
+      </div>
+
+      {msg && <div className="mt-3 text-emerald-400 text-sm">{msg}</div>}
+      {err && <div className="mt-3 text-red-400 text-sm">{err}</div>}
     </div>
   );
 }
