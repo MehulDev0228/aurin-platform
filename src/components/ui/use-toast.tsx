@@ -47,7 +47,11 @@ export function useToast() {
 }
 
 // shadcn-style convenience export
-export const toast = (t: Omit<Toast, "id">) => {
-  console.warn("Direct `toast()` called but no provider reference. Prefer `const {toast}=useToast()` inside components.");
+export const toast = (_t: Omit<Toast, "id">) => {
+  // Only warn in development
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn("Direct `toast()` called but no provider reference. Prefer `const {toast}=useToast()` inside components.");
+  }
   return { id: "0" };
 };

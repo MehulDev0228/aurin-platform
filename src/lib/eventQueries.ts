@@ -219,31 +219,30 @@ export async function issueBadgeToAttendee(enrollmentId: string, badgeId: string
     .from('badges')
     .select('name, description, image_url')
     .eq('id', badgeId)
-    .single();
+    .single() as { data: { name: string; description: string; image_url: string } | null };
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('blockchain_address')
+    .select('wallet_address')
     .eq('id', userId)
-    .single();
+    .single() as { data: { wallet_address: string | null } | null };
 
-  if (!badge || !profile?.blockchain_address) {
+  if (!badge?.data || !profile?.data?.wallet_address) {
     throw new Error('Missing badge or wallet information');
   }
 
   const mintResult = await mintBadgeNFT(
-    profile.blockchain_address,
-    badge.name,
-    badge.description,
-    badge.image_url
+    profile.data.wallet_address,
+    badge.data.name,
+    badge.data.description,
+    badge.data.image_url
   );
 
   if (!mintResult.success) {
     throw new Error(mintResult.error || 'Failed to mint NFT');
   }
 
-  const { data: achievement, error: achievementError } = await supabase
-    .from('achievements')
+  const { data: achievement, error: achievementError } = await (supabase.from('achievements') as any)
     .insert({
       user_id: userId,
       badge_id: badgeId,
@@ -258,8 +257,7 @@ export async function issueBadgeToAttendee(enrollmentId: string, badgeId: string
 
   if (achievementError) throw achievementError;
 
-  const { error: enrollmentError } = await supabase
-    .from('event_enrollments')
+  const { error: enrollmentError } = await (supabase.from('event_enrollments') as any)
     .update({
       badge_issued: true,
       status: 'completed'

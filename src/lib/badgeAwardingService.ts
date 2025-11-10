@@ -32,8 +32,7 @@ export async function awardBadge(params: AwardBadgeParams) {
     chainVerified = true;
   }
 
-  const { data: achievement, error } = await supabase
-    .from('achievements')
+  const { data: achievement, error } = await (supabase.from('achievements') as any)
     .insert({
       user_id: params.userId,
       badge_id: params.badgeId,

@@ -1,8 +1,13 @@
 // src/pages/Login.tsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/use-toast';
+import { loginSchema, type LoginFormData } from '../lib/validations';
+import { sanitizeEmail } from '../lib/sanitize';
+import { logger } from '../lib/logger';
 import SpotlightCard from '../components/aceternity/SpotlightCard';
 import RippleButton from '../components/aceternity/RippleButton';
 import EncryptedText from '../components/aceternity/EncryptedText';
@@ -11,19 +16,48 @@ export default function Login() {
   const { signIn } = useAuth();
   const { toast } = useToast();
   const nav = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
   const [busy, setBusy] = useState(false);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const submit = async (data: LoginFormData) => {
     setBusy(true);
     try {
-      await signIn(form.email, form.password);
-      toast({ title: 'Welcome back', description: 'Logged in successfully.', variant: 'success' });
+      const sanitizedEmail = sanitizeEmail(data.email);
+      await signIn(sanitizedEmail, data.password);
+      toast({ 
+        title: 'Welcome back', 
+        description: 'Logged in successfully.',
+      });
       nav('/dashboard', { replace: true });
     } catch (err: any) {
-      toast({ title: 'Login failed', description: err?.message || 'Please check your credentials.', variant: 'destructive' });
-    } finally { setBusy(false); }
+      logger.error('Login failed', { error: err, context: 'Login' });
+      const errorMessage = err?.message || 'Invalid email or password. Please check your credentials and try again.';
+      
+      // If email not confirmed, provide helpful message
+      if (errorMessage.toLowerCase().includes('email not confirmed') || 
+          errorMessage.toLowerCase().includes('email_not_confirmed')) {
+        toast({ 
+          title: 'Email not verified', 
+          description: 'Please check your email and click the verification link. If you need help, contact support.', 
+          variant: 'destructive' 
+        });
+      } else {
+        toast({ 
+          title: 'Login failed', 
+          description: errorMessage, 
+          variant: 'destructive' 
+        });
+      }
+    } finally { 
+      setBusy(false); 
+    }
   };
 
   return (
@@ -32,24 +66,32 @@ export default function Login() {
         <h1 className="text-2xl font-semibold">
           <EncryptedText text="Log in to AURIN" />
         </h1>
-        <form onSubmit={submit} className="mt-5 grid gap-4">
+        <form onSubmit={handleSubmit(submit)} className="mt-5 grid gap-4">
           <div>
             <label className="text-sm text-gray-300">Email</label>
             <input
               type="email"
-              className="mt-1 w-full rounded-xl bg-black/40 border border-zinc-800 px-3 py-2"
-              required value={form.email}
-              onChange={(e)=>setForm({...form,email:e.target.value})}
+              {...register("email")}
+              className={`mt-1 w-full rounded-xl bg-black/40 border px-3 py-2 ${
+                errors.email ? 'border-red-500' : 'border-zinc-800'
+              }`}
             />
+            {errors.email && (
+              <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>
+            )}
           </div>
           <div>
             <label className="text-sm text-gray-300">Password</label>
             <input
               type="password"
-              className="mt-1 w-full rounded-xl bg-black/40 border border-zinc-800 px-3 py-2"
-              required value={form.password}
-              onChange={(e)=>setForm({...form,password:e.target.value})}
+              {...register("password")}
+              className={`mt-1 w-full rounded-xl bg-black/40 border px-3 py-2 ${
+                errors.password ? 'border-red-500' : 'border-zinc-800'
+              }`}
             />
+            {errors.password && (
+              <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>
+            )}
           </div>
           <RippleButton
             disabled={busy}

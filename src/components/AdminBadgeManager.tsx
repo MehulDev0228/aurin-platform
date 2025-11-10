@@ -57,7 +57,7 @@ export default function AdminBadgeManager() {
         makePublic: true,
       });
 
-      setMsg(`Awarded ${badge.name} to ${user.username || user.email}. ${achievement.transaction_hash ? `Tx: ${achievement.transaction_hash}` : '(off-chain)'}`);
+      setMsg(`Awarded ${badge.name} to ${user.username || user.email}. ${(achievement as any)?.transaction_hash ? `Tx: ${(achievement as any).transaction_hash}` : '(off-chain)'}`);
     } catch (e: any) {
       setErr(e?.message || 'Failed to award badge.');
     } finally {

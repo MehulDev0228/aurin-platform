@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isUserOrganizer, createOrganizerProfile, getOrganizerEvents, getEventEnrollments, issueBadgeToAttendee } from '../lib/eventQueries';
 import { useToast } from '../components/Toast';
+import { logger } from '../lib/logger';
 import Modal from '../components/Modal';
 import { DashboardSkeleton } from '../components/Skeleton';
 
@@ -37,7 +38,7 @@ export default function OrganizerDashboard() {
         setShowSetup(true);
       }
     } catch (error) {
-      console.error('Failed to check organizer status:', error);
+      logger.error('Failed to check organizer status', { error, context: 'OrganizerDashboard', userId: user?.id });
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ export default function OrganizerDashboard() {
       const data = await getOrganizerEvents(user!.id);
       setEvents(data);
     } catch (error) {
-      console.error('Failed to load events:', error);
+      logger.error('Failed to load events', { error, context: 'OrganizerDashboard', userId: user?.id });
     }
   };
 

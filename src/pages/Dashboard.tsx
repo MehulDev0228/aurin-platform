@@ -2,18 +2,21 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Award, Trophy, Eye, CheckCircle, Flame, Sparkles, Crown,
-  Share2, ExternalLink, Users, Plus, TrendingUp, Calendar,
-  Target, Zap, Star, ArrowRight
+  Share2, ExternalLink, Users, Plus,
+  Target, Zap, Star, ArrowRight, Upload, FileText
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProfile, getUserStats } from '../lib/queries';
-import { useToast } from '../components/Toast';
-import Navbar from '../components/Navbar';
+import { useToast } from '../components/ui/use-toast';
+import { logger } from '../lib/logger';
+import SteveJobsNavbar from '../components/SteveJobsNavbar';
+import CertificateImport from '../components/CertificateImport';
+import Button from '../components/Button';
 
-export default function NewDashboard() {
+export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [stats, setStats] = useState({
@@ -24,6 +27,7 @@ export default function NewDashboard() {
   });
   const [recentBadges, setRecentBadges] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [showCertImport, setShowCertImport] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -42,39 +46,59 @@ export default function NewDashboard() {
       setUserProfile(profile);
       setStats({
         badges: statsData.badgesEarned || 0,
-        profileViews: profile.profile_views || 0,
-        verifications: statsData.badgesEarned || 0,
-        dayStreak: profile.day_streak || 1
+        profileViews: statsData.profileViews || 0,
+        verifications: statsData.verifications || 0,
+        dayStreak: statsData.dayStreak || 1
       });
       setRecentBadges(statsData.recentAchievements || []);
       setRecommendations(statsData.recommendations || []);
     } catch (error) {
-      console.error('Failed to load dashboard:', error);
-      showToast('Failed to load dashboard data', 'error');
+      logger.error('Failed to load dashboard', { error, context: 'Dashboard', userId: user.id });
+      toast({
+        title: 'Failed to load dashboard',
+        description: 'Unable to load your dashboard. Please try refreshing the page or contact support if the issue persists.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   }
 
   const copyProfileLink = () => {
+    if (!userProfile?.username) return;
     const profileUrl = `${window.location.origin}/profile/${userProfile.username}`;
     navigator.clipboard.writeText(profileUrl);
-    showToast('Profile link copied!', 'success');
+    toast({
+      title: 'Profile link copied!',
+      description: 'Share your profile with others',
+    });
   };
 
   const handleShareProfile = () => copyProfileLink();
-  const handleViewPublicProfile = () => window.open(`/profile/${userProfile.username}`, '_blank');
+  const handleViewPublicProfile = () => {
+    if (!userProfile?.username) return;
+    window.open(`/profile/${userProfile.username}`, '_blank');
+  };
   const handleInviteFriends = () => {
+    if (!userProfile?.username) return;
     const inviteUrl = `${window.location.origin}/signup?ref=${userProfile.username}`;
     navigator.clipboard.writeText(inviteUrl);
-    showToast('Invite link copied!', 'success');
+    toast({
+      title: 'Invite link copied!',
+      description: 'Share with friends to earn rewards',
+    });
   };
   const handleBecomeOrganizer = () => navigate('/organizer-dashboard');
+  const handleImportCertificates = () => setShowCertImport(true);
+  const handleCertImportSuccess = () => {
+    loadDashboard();
+    setShowCertImport(false);
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-black">
-        <Navbar />
+        <SteveJobsNavbar />
         <div className="flex items-center justify-center min-h-[80vh]">
           <div className="flex flex-col items-center gap-4">
             <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -87,7 +111,13 @@ export default function NewDashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Navbar />
+      <SteveJobsNavbar />
+      {showCertImport && (
+        <CertificateImport
+          onClose={() => setShowCertImport(false)}
+          onSuccess={handleCertImportSuccess}
+        />
+      )}
 
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid lg:grid-cols-12 gap-8">
@@ -152,6 +182,32 @@ export default function NewDashboard() {
               ))}
             </div>
 
+            {/* Certificate Import CTA */}
+            {stats.badges === 0 && (
+              <div className="rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/5 border border-purple-500/20 p-6 mt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center flex-shrink-0">
+                    <FileText size={24} className="text-black" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold mb-2">Have existing certificates?</h3>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Import your certificates and achievements to build your AURIN profile
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleImportCertificates}
+                      className="flex items-center gap-2"
+                    >
+                      <Upload size={18} />
+                      Import Certificates
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="rounded-2xl bg-white/5 border border-white/10 p-8">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -184,17 +240,29 @@ export default function NewDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-4">
-                  {recentBadges.slice(0, 6).map((badge, i) => (
+                  {recentBadges.slice(0, 6).map((achievement: any) => (
                     <div
-                      key={badge.id}
+                      key={achievement.id}
                       className="group relative overflow-hidden rounded-xl bg-white/5 border border-white/10 p-6 hover:border-emerald-500/50 transition-all duration-300 hover:scale-105 cursor-pointer"
                     >
-                      <div className="text-4xl mb-3">{badge.badge?.image_url || '🏆'}</div>
-                      <h4 className="font-semibold mb-1 text-sm">{badge.badge?.name}</h4>
-                      <p className="text-xs text-gray-500 line-clamp-2">{badge.badge?.description}</p>
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <CheckCircle size={14} className="text-emerald-400" />
-                      </div>
+                      {achievement.badges?.image_url ? (
+                        <img
+                          src={achievement.badges.image_url}
+                          alt={achievement.badges.name}
+                          className="w-16 h-16 object-cover rounded-lg mb-3 mx-auto"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mx-auto mb-3">
+                          <Trophy size={32} className="text-black" />
+                        </div>
+                      )}
+                      <h4 className="font-semibold mb-1 text-sm text-center">{achievement.badges?.name || 'Badge'}</h4>
+                      <p className="text-xs text-gray-500 line-clamp-2 text-center">{achievement.badges?.description}</p>
+                      {achievement.blockchain_verified && (
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center">
+                          <CheckCircle size={14} className="text-emerald-400" />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -249,6 +317,18 @@ export default function NewDashboard() {
                   </div>
                   <ArrowRight size={18} className="text-gray-600 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
                 </button>
+                {stats.badges > 0 && (
+                  <button
+                    onClick={handleImportCertificates}
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all text-left flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Upload size={20} className="text-emerald-400" />
+                      <span className="font-medium">Import Certificates</span>
+                    </div>
+                    <ArrowRight size={18} className="text-gray-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -273,7 +353,11 @@ export default function NewDashboard() {
                     >
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-lg flex-shrink-0">
-                          {badge.image_url || '🏆'}
+                          {badge.image_url ? (
+                            <img src={badge.image_url} alt={badge.name} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <Trophy size={20} className="text-black" />
+                          )}
                         </div>
                         <div className="flex-1">
                           <h4 className="font-semibold text-sm group-hover:text-emerald-400 transition-colors mb-1">

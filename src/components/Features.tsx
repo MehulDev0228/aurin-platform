@@ -1,5 +1,5 @@
 // src/components/Features.tsx
-import { Globe, ShieldCheck, ScanEye, WalletMinimal } from "lucide-react";
+import { Globe, ShieldCheck, QrCode, Wallet } from "lucide-react";
 import SpotlightCard from "./aceternity/SpotlightCard";
 
 const items = [
@@ -24,7 +24,7 @@ const items = [
     ],
   },
   {
-    icon: ScanEye,
+    icon: QrCode,
     title: "Instant Proof",
     bullets: [
       "QR code for scanning",
@@ -34,7 +34,7 @@ const items = [
     ],
   },
   {
-    icon: WalletMinimal,
+    icon: Wallet,
     title: "Wallet Optional",
     bullets: [
       "Claim off-chain first",

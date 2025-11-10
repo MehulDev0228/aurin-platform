@@ -51,7 +51,7 @@ alter table public.events
   add column if not exists category text;
 
 create index if not exists idx_events_category on public.events (category);
-create index if not exists idx_events_public_start on public.events (is_public, start_at desc);
+create index if not exists idx_events_status_start on public.events (status, start_date desc);
 
 -- 3) Wallet ownership proof on profiles
 alter table public.profiles

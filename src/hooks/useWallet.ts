@@ -10,7 +10,7 @@ export async function connectWallet(): Promise<{ address: string; chainId: strin
   await ensureNetwork();
   const signer = await getSigner();
   const address = await signer.getAddress();
-  const network = await (signer.provider as ethers.BrowserProvider).getNetwork();
+  const network = await (signer.provider as ethers.providers.Web3Provider).getNetwork();
   const chainId = `0x${Number(network.chainId).toString(16)}`;
   return { address, chainId };
 }
@@ -20,7 +20,7 @@ export async function signOwnership(address: string) {
   const message = `Verify wallet ownership: ${address}`;
   const signature = await signer.signMessage(message);
   // Optional: quick local recovery proof
-  const recovered = ethers.verifyMessage(message, signature);
+  const recovered = ethers.utils.verifyMessage(message, signature);
   const ok = recovered.toLowerCase() === address.toLowerCase();
   if (!ok) throw new Error('Signature verification failed.');
   return { signature, message };

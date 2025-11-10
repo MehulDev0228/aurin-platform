@@ -24,21 +24,30 @@ begin
 end $$;
 
 -- Optional: prevent enrollment spam (10 per hour)
+-- Note: This requires 'enrollments' table which is created in launch_finish.sql
+-- Run this migration AFTER launch_finish.sql
 do $$
 begin
-  if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='enrollments' and policyname='rate_limit_enrollments'
+  -- Check if enrollments table exists first
+  if exists (
+    select 1 from information_schema.tables 
+    where table_schema = 'public' 
+    and table_name = 'enrollments'
   ) then
-    create policy rate_limit_enrollments
-    on public.enrollments
-    for insert
-    to authenticated
-    with check (
-      (
-        select count(*) from public.enrollments
-        where user_id = auth.uid()
-          and created_at > now() - interval '1 hour'
-      ) < 10
-    );
+    if not exists (
+      select 1 from pg_policies where schemaname='public' and tablename='enrollments' and policyname='rate_limit_enrollments'
+    ) then
+      create policy rate_limit_enrollments
+      on public.enrollments
+      for insert
+      to authenticated
+      with check (
+        (
+          select count(*) from public.enrollments
+          where user_id = auth.uid()
+            and created_at > now() - interval '1 hour'
+        ) < 10
+      );
+    end if;
   end if;
 end $$;

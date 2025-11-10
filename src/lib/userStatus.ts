@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 export interface UserStatus {
   emailVerified: boolean;
@@ -38,7 +39,7 @@ export async function getUserStatus(userId: string): Promise<UserStatus> {
       isAdmin: !!adminData
     };
   } catch (error) {
-    console.error('Error getting user status:', error);
+    logger.error('Failed to get user status', { error, context: 'UserStatus', userId });
     return {
       emailVerified: false,
       walletConnected: false,

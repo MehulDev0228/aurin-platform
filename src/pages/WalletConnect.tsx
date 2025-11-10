@@ -34,14 +34,24 @@ export default function WalletConnect() {
 
       const { signature, message } = await signOwnership(address);
 
-      // Cast to any so TS doesn’t complain until you regenerate types
+      // Cast to any so TS doesn't complain until you regenerate types
       const { error } = await supabase
         .from('profiles')
-        .update({ wallet_address: address, wallet_signature: signature, wallet_sig_message: message } as any)
+        .update({ 
+          wallet_address: address, 
+          wallet_signature: signature, 
+          wallet_sig_message: message,
+          wallet_connected: true 
+        } as any)
         .eq('id', user.id);
       if (error) throw error;
 
       setSaved(true);
+      
+      // Redirect to next step after 2 seconds
+      setTimeout(() => {
+        window.location.href = '/onboarding';
+      }, 2000);
     } catch (e: any) {
       setErr(e?.message || 'Failed to connect wallet.');
     } finally {

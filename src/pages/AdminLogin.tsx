@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Award, Shield, Lock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/ui/use-toast';
 import { supabase } from '../lib/supabase';
 
 export default function AdminLogin() {
@@ -18,29 +18,41 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const { data, error } = await signIn(email, password);
-
-      if (error) throw error;
-
-      if (data.user) {
+      await signIn(email, password);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
         const { data: adminData, error: adminError } = await supabase
           .from('admin_users')
           .select('role')
-          .eq('user_id', data.user.id)
+          .eq('user_id', user.id)
           .single();
 
         if (adminError || !adminData) {
-          showToast('Access denied: Admin privileges required', 'error');
+          showToast({
+            title: 'Access denied',
+            description: 'Admin privileges required',
+            variant: 'destructive',
+          });
           await supabase.auth.signOut();
           setLoading(false);
           return;
         }
 
-        showToast(`Welcome back, ${adminData.role}!`, 'success');
+        showToast({
+          title: `Welcome back, ${adminData.role}!`,
+          description: 'Accessing admin panel...',
+        });
         navigate('/admin');
       }
     } catch (error: any) {
-      showToast(error.message || 'Invalid admin credentials', 'error');
+      showToast({
+        title: 'Login failed',
+        description: error.message || 'Invalid admin credentials',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }

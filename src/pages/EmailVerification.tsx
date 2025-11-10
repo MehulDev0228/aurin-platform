@@ -21,7 +21,13 @@ export default function EmailVerification() {
         setVerified(confirmed);
         if (confirmed) {
           clearInterval(timer);
-          setTimeout(() => navigate('/dashboard', { replace: true }), 600);
+          // Update profile to mark email as verified
+          await supabase
+            .from('profiles')
+            .update({ email_verified: true })
+            .eq('id', user.id);
+          // Redirect to wallet connection
+          setTimeout(() => navigate('/wallet', { replace: true }), 600);
         }
       }
       setChecking(false);

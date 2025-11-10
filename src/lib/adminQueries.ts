@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 export async function isUserAdmin(userId: string): Promise<boolean> {
   const { data, error } = await supabase
@@ -83,8 +84,7 @@ export async function getAllOrganizers() {
 }
 
 export async function updateUserStatus(userId: string, updates: any) {
-  const { error } = await supabase
-    .from('profiles')
+  const { error } = await (supabase.from('profiles') as any)
     .update(updates)
     .eq('id', userId);
 
@@ -101,8 +101,7 @@ export async function deleteUser(userId: string) {
 }
 
 export async function verifyOrganizer(userId: string) {
-  const { error } = await supabase
-    .from('organizer_profiles')
+  const { error } = await (supabase.from('organizer_profiles') as any)
     .update({ verified_organizer: true })
     .eq('user_id', userId);
 
@@ -141,7 +140,7 @@ export async function logAdminAction(
   targetId: string,
   details: any = {}
 ) {
-  const { error } = await supabase.rpc('log_admin_action', {
+  const { error } = await (supabase.rpc as any)('log_admin_action', {
     p_admin_user_id: userId,
     p_action: action,
     p_target_type: targetType,
@@ -149,7 +148,7 @@ export async function logAdminAction(
     p_details: details,
   });
 
-  if (error) console.error('Failed to log admin action:', error);
+  if (error) logger.error('Failed to log admin action', { error, context: 'AdminQueries', userId, action, targetType, targetId });
 }
 
 export async function getAnalytics(days = 30) {
@@ -180,8 +179,7 @@ export async function createBadge(badgeData: any) {
 }
 
 export async function updateBadge(badgeId: string, badgeData: any) {
-  const { data, error } = await supabase
-    .from('badges')
+  const { data, error } = await (supabase.from('badges') as any)
     .update(badgeData)
     .eq('id', badgeId)
     .select()
@@ -242,7 +240,7 @@ export async function getUserGrowthData(days: number = 30) {
   if (error) throw error;
 
   const dailyCounts: { [key: string]: number } = {};
-  data?.forEach(profile => {
+  data?.forEach((profile: any) => {
     const date = new Date(profile.created_at).toISOString().split('T')[0];
     dailyCounts[date] = (dailyCounts[date] || 0) + 1;
   });

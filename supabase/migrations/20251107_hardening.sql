@@ -7,18 +7,35 @@ create index if not exists idx_profiles_username on public.profiles (username);
 create index if not exists idx_profiles_wallet on public.profiles (wallet_address);
 
 alter table public.events
-  alter column name set not null,
-  alter column start_at set not null,
-  alter column end_at set not null;
+  alter column title set not null,
+  alter column start_date set not null,
+  alter column end_date set not null;
 
-create index if not exists idx_events_public_start on public.events (is_public, start_at desc);
+create index if not exists idx_events_status_start on public.events (status, start_date desc);
 create index if not exists idx_events_category on public.events (category);
 
-alter table public.enrollments
-  add constraint enrollments_unique unique (user_id, event_id);
-
-create index if not exists idx_enrollments_user on public.enrollments (user_id);
-create index if not exists idx_enrollments_event on public.enrollments (event_id);
+-- Note: enrollments table is created in launch_finish.sql, so skip this if table doesn't exist
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'enrollments'
+  ) THEN
+    -- Add constraint if it doesn't exist
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint 
+      WHERE conname = 'enrollments_unique'
+    ) THEN
+      ALTER TABLE public.enrollments
+        ADD CONSTRAINT enrollments_unique UNIQUE (user_id, event_id);
+    END IF;
+    
+    -- Create indexes
+    CREATE INDEX IF NOT EXISTS idx_enrollments_user ON public.enrollments (user_id);
+    CREATE INDEX IF NOT EXISTS idx_enrollments_event ON public.enrollments (event_id);
+  END IF;
+END $$;
 
 -- Keep achievements sane
 create index if not exists idx_achievements_user on public.achievements (user_id);

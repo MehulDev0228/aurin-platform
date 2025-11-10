@@ -1,12 +1,14 @@
 // src/App.tsx
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import CinematicIntro from './components/CinematicIntro';
 
-import Landing from './pages/Landing';
+import SteveJobsLanding from './pages/SteveJobsLanding';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
+import SteveJobsDashboard from './pages/SteveJobsDashboard';
 import PublicProfile from './pages/PublicProfile';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
@@ -16,8 +18,9 @@ import EventDetail from './pages/EventDetail';
 import Admin from './pages/Admin';
 import AdminLogin from './pages/AdminLogin';
 import CreateEvent from './pages/CreateEvent';
-import WalletConnect from './pages/WalletConnect';
-import EmailVerification from './pages/EmailVerification';
+import OrganizerDashboard from './pages/OrganizerDashboard';
+import PremiumEmailVerification from './pages/PremiumEmailVerification';
+import PremiumWalletConnect from './pages/PremiumWalletConnect';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import NotFound from './pages/NotFound';
@@ -30,21 +33,22 @@ import Toaster from './components/ui/toaster';
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<SteveJobsLanding />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
-      <Route path="/email-verification" element={<EmailVerification />} />
+      <Route path="/email-verification" element={<ProtectedRoute><PremiumEmailVerification /></ProtectedRoute>} />
       <Route path="/explore" element={<Explore />} />
       <Route path="/events" element={<Events />} />
       <Route path="/events/:id" element={<EventDetail />} />
 
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><SteveJobsDashboard /></ProtectedRoute>} />
       <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/wallet" element={<ProtectedRoute><WalletConnect /></ProtectedRoute>} />
+      <Route path="/wallet" element={<ProtectedRoute><PremiumWalletConnect /></ProtectedRoute>} />
 
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+      <Route path="/organizer" element={<ProtectedRoute><OrganizerDashboard /></ProtectedRoute>} />
       <Route path="/create-event" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
 
       <Route path="/profile/:username" element={<PublicProfile />} />
@@ -56,13 +60,33 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [showIntro, setShowIntro] = useState(true);
+
+  useEffect(() => {
+    // Check if intro was already shown in this session
+    const introShown = sessionStorage.getItem('aurin-intro-shown');
+    if (introShown) {
+      setShowIntro(false);
+    }
+  }, []);
+
+  const handleIntroComplete = () => {
+    sessionStorage.setItem('aurin-intro-shown', 'true');
+    setShowIntro(false);
+  };
+
   return (
     <AuthProvider>
       <BrowserRouter>
         <ErrorBoundary>
           <ToastProvider>
-            <AppRoutes />
-            <Toaster />
+            {showIntro && <CinematicIntro onComplete={handleIntroComplete} />}
+            {!showIntro && (
+              <>
+                <AppRoutes />
+                <Toaster />
+              </>
+            )}
           </ToastProvider>
         </ErrorBoundary>
       </BrowserRouter>

@@ -92,21 +92,46 @@ CREATE TABLE IF NOT EXISTS wallet_connections (
 
 ALTER TABLE wallet_connections ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own wallet connections"
-  ON wallet_connections FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
+-- Create policies only if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'wallet_connections' 
+    AND policyname = 'Users can view own wallet connections'
+  ) THEN
+    CREATE POLICY "Users can view own wallet connections"
+      ON wallet_connections FOR SELECT
+      TO authenticated
+      USING (auth.uid() = user_id);
+  END IF;
 
-CREATE POLICY "Users can add wallet connections"
-  ON wallet_connections FOR INSERT
-  TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'wallet_connections' 
+    AND policyname = 'Users can add wallet connections'
+  ) THEN
+    CREATE POLICY "Users can add wallet connections"
+      ON wallet_connections FOR INSERT
+      TO authenticated
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
 
-CREATE POLICY "Users can update own wallet connections"
-  ON wallet_connections FOR UPDATE
-  TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'wallet_connections' 
+    AND policyname = 'Users can update own wallet connections'
+  ) THEN
+    CREATE POLICY "Users can update own wallet connections"
+      ON wallet_connections FOR UPDATE
+      TO authenticated
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- Create email verification tokens table
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
@@ -120,10 +145,21 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 
 ALTER TABLE email_verification_tokens ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own verification tokens"
-  ON email_verification_tokens FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
+-- Create policy only if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'email_verification_tokens' 
+    AND policyname = 'Users can view own verification tokens'
+  ) THEN
+    CREATE POLICY "Users can view own verification tokens"
+      ON email_verification_tokens FOR SELECT
+      TO authenticated
+      USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_wallet_connections_user_id ON wallet_connections(user_id);

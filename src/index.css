@@ -4,6 +4,67 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Design System - Colors */
+  --color-primary: #FFFFFF;
+  --color-secondary: #10B981;
+  --color-accent: #059669;
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #0A0A0A;
+  --color-bg-tertiary: #1A1A1A;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #9CA3AF;
+  --color-text-tertiary: #6B7280;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-hover: rgba(16, 185, 129, 0.3);
+  --color-success: #10B981;
+  --color-error: #EF4444;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+  
+  /* Typography */
+  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  
+  /* Spacing Scale (8px grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+  
+  /* Border Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.2);
+  --shadow-emerald: 0 20px 60px rgba(16, 185, 129, 0.3);
+  
+  /* Transitions */
+  --transition-fast: 0.2s ease-in-out;
+  --transition-standard: 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  --transition-slow: 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 @layer base {
   * {
     @apply antialiased;
@@ -15,15 +76,60 @@
 
   body {
     @apply bg-black text-white;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+    font-family: var(--font-body);
     overflow-x: hidden;
     letter-spacing: -0.02em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: var(--text-base);
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    font-size: var(--text-5xl);
+    font-weight: 800;
+  }
+
+  h2 {
+    font-size: var(--text-4xl);
+    font-weight: 700;
+  }
+
+  h3 {
+    font-size: var(--text-3xl);
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+  }
+
+  h5 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+  }
+
+  h6 {
+    font-size: var(--text-lg);
+    font-weight: 600;
   }
 
   ::selection {
     @apply bg-emerald-500/30 text-white;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
   }
 }
 

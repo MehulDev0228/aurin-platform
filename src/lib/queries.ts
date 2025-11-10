@@ -1,41 +1,72 @@
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 export async function getUserStats(userId: string) {
   try {
-    const [badgesResult, viewsResult, activityResult] = await Promise.all([
+    const [badgesResult, viewsResult, achievementsResult] = await Promise.all([
       supabase
         .from('achievements')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId),
 
       supabase
-        .from('profile_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', userId),
+        .from('profiles')
+        .select('profile_views')
+        .eq('id', userId)
+        .single(),
 
       supabase
-        .from('user_activity')
-        .select('activity_count')
+        .from('achievements')
+        .select(`
+          id,
+          earned_at,
+          blockchain_verified,
+          badges (
+            id,
+            name,
+            description,
+            image_url,
+            category
+          )
+        `)
         .eq('user_id', userId)
-        .order('activity_date', { ascending: false })
-        .limit(365)
+        .order('earned_at', { ascending: false })
+        .limit(6)
     ]);
 
-    const activityDays = activityResult.data?.filter(a => a.activity_count > 0).length || 0;
+    const badgesEarned = badgesResult.count || 0;
+    const profileViews = viewsResult.data?.profile_views || 0;
+    const recentAchievements = achievementsResult.data || [];
+    const verifications = achievementsResult.data?.filter((a: any) => a.blockchain_verified).length || 0;
+
+    // Calculate day streak (simplified - based on recent activity)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const recentBadges = achievementsResult.data?.filter((a: any) => {
+      const earnedDate = new Date(a.earned_at);
+      earnedDate.setHours(0, 0, 0, 0);
+      const diffTime = today.getTime() - earnedDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays <= 30;
+    }).length || 0;
 
     return {
-      badges: badgesResult.count || 0,
-      profileViews: viewsResult.count || 0,
-      verifications: 0,
-      streak: activityDays
+      badgesEarned,
+      profileViews,
+      verifications,
+      dayStreak: Math.min(recentBadges, 30),
+      recentAchievements,
+      recommendations: [] // Can be populated with recommendation logic
     };
   } catch (error) {
-    console.error('getUserStats error:', error);
+    logger.error('getUserStats failed', { error, context: 'Queries', userId });
     return {
-      badges: 0,
+      badgesEarned: 0,
       profileViews: 0,
       verifications: 0,
-      streak: 0
+      dayStreak: 0,
+      recentAchievements: [],
+      recommendations: []
     };
   }
 }
@@ -66,7 +97,7 @@ export async function getUserBadges(userId: string, limit: number = 10) {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('getUserBadges error:', error);
+    logger.error('getUserBadges failed', { error, context: 'Queries', userId });
     return [];
   }
 }
@@ -118,7 +149,7 @@ export async function getAllBadges(category?: string, search?: string) {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('getAllBadges error:', error);
+    logger.error('getAllBadges failed', { error, context: 'Queries', category, search });
     return [];
   }
 }
@@ -138,7 +169,7 @@ export async function getUserActivity(userId: string, days: number = 365) {
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('getUserActivity error:', error);
+    logger.error('getUserActivity failed', { error, context: 'Queries', userId, days });
     return [];
   }
 }
@@ -152,9 +183,9 @@ export async function trackProfileView(profileId: string, viewerIp?: string) {
         viewer_ip: viewerIp || 'unknown'
       });
 
-    if (error) console.error('Track profile view error:', error);
+    if (error) logger.error('Track profile view failed', { error, context: 'Queries', profileId, viewerIp });
   } catch (error) {
-    console.error('Track profile view error:', error);
+    logger.error('Track profile view failed', { error, context: 'Queries', profileId, viewerIp });
   }
 }
 
@@ -173,9 +204,9 @@ export async function incrementUserActivity(userId: string) {
         ignoreDuplicates: false
       });
 
-    if (error) console.error('Activity tracking error:', error);
+    if (error) logger.error('Activity tracking failed', { error, context: 'Queries', userId });
   } catch (error) {
-    console.error('Activity tracking error:', error);
+    logger.error('Activity tracking failed', { error, context: 'Queries', userId });
   }
 }
 
@@ -190,7 +221,7 @@ export async function getUserProfile(userId: string) {
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('getUserProfile error:', error);
+    logger.error('getUserProfile failed', { error, context: 'Queries', userId });
     return null;
   }
 }

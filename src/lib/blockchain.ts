@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { ENV, blockchainEnabled } from './env';
 import { ERC1155_ABI } from './abi/erc1155';
 import { ERC721_ABI } from './abi/erc721';
+import { logger } from './logger';
 
 declare global {
   interface Window { ethereum?: any; }
@@ -20,7 +21,7 @@ export function isBrowserWalletAvailable() {
 
 export async function ensureNetwork(): Promise<void> {
   if (!isBrowserWalletAvailable()) throw new Error('No wallet found. Please install MetaMask.');
-  const provider = new ethers.BrowserProvider(window.ethereum);
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
   const network = await provider.getNetwork();
   const current = `0x${Number(network.chainId).toString(16)}`;
   if (current.toLowerCase() === ENV.CHAIN_ID.toLowerCase()) return;
@@ -48,7 +49,7 @@ export async function ensureNetwork(): Promise<void> {
 
 export async function getSigner(): Promise<ethers.Signer> {
   if (!isBrowserWalletAvailable()) throw new Error('No wallet found. Please install MetaMask.');
-  const provider = new ethers.BrowserProvider(window.ethereum);
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
   await provider.send('eth_requestAccounts', []);
   return provider.getSigner();
 }
@@ -71,7 +72,7 @@ export async function mintBadge(options: {
   const signer = await getSigner();
   const contract = getContract(signer);
 
-  let tx: ethers.TransactionResponse;
+  let tx: ethers.providers.TransactionResponse;
   if (ENV.CONTRACT_STANDARD === 'ERC721') {
     tx = await contract.safeMint(options.toAddress, options.tokenURI);
   } else {
@@ -81,7 +82,7 @@ export async function mintBadge(options: {
   }
 
   const receipt = await tx.wait();
-  const txHash = receipt?.hash || tx.hash;
+  const txHash = tx.hash;
 
   let mintedTokenId: string | undefined;
   try {
@@ -92,4 +93,52 @@ export async function mintBadge(options: {
   } catch { /* ignore */ }
 
   return { chainId: ENV.CHAIN_ID, txHash, tokenId: mintedTokenId };
+}
+
+// Alternative function for eventQueries compatibility
+export async function mintBadgeNFT(
+  walletAddress: string,
+  badgeName: string,
+  badgeDescription: string,
+  badgeImageUrl: string
+): Promise<{ success: boolean; tokenId?: string; transactionHash?: string; error?: string }> {
+  try {
+    if (!blockchainEnabled()) {
+      // If blockchain is disabled, return success without minting
+      return { success: true };
+    }
+
+    // Create token URI metadata
+    const metadata = {
+      name: badgeName,
+      description: badgeDescription,
+      image: badgeImageUrl,
+      attributes: [
+        { trait_type: 'Badge Name', value: badgeName },
+        { trait_type: 'Issued On', value: new Date().toISOString() },
+      ],
+    };
+
+    // For MVP, we'll use a simple tokenURI (in production, upload to IPFS)
+    const tokenURI = `data:application/json;base64,${btoa(JSON.stringify(metadata))}`;
+
+    const result = await mintBadge({
+      toAddress: walletAddress,
+      tokenURI,
+      tokenId: 1, // Default token ID for ERC1155
+      amount: 1,
+    });
+
+    return {
+      success: true,
+      tokenId: result.tokenId,
+      transactionHash: result.txHash,
+    };
+  } catch (error: any) {
+    logger.error('Failed to mint badge NFT', { error, context: 'Blockchain' });
+    return {
+      success: false,
+      error: error?.message || 'Failed to mint NFT. Please try again or contact support if the issue persists.',
+    };
+  }
 }

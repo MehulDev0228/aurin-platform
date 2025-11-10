@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Award, User, Shield, Link as LinkIcon, Save, LogOut, Mail, Key } from 'lucide-react';
+import { Award, User, Shield, Link as LinkIcon, Save, LogOut, Mail, Key, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/Toast';
+import { logger } from '../lib/logger';
+import { parseError, retryWithBackoff } from '../lib/errorHandler';
+import { useToast as useToastShadcn } from '../components/ui/use-toast';
+import SteveJobsNavbar from '../components/SteveJobsNavbar';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
@@ -52,7 +56,7 @@ export default function Settings() {
         });
       }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logger.error('Failed to load profile', { error, context: 'Settings', userId: user?.id });
     } finally {
       setLoading(false);
     }
@@ -63,16 +67,18 @@ export default function Settings() {
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(formData)
-        .eq('id', user.id);
-
-      if (error) throw error;
+      await retryWithBackoff(async () => {
+        const { error } = await (supabase.from('profiles') as any)
+          .update(formData)
+          .eq('id', user.id);
+        if (error) throw error;
+      });
 
       showToast('Settings saved successfully!', 'success');
     } catch (error: any) {
-      showToast(error.message || 'Failed to save settings', 'error');
+      const errorInfo = parseError(error);
+      logger.error('Failed to save settings', { error, context: 'Settings', userId: user.id });
+      showToast(errorInfo.message || 'Failed to save settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -107,33 +113,19 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-black text-white pt-28">
+        <SteveJobsNavbar />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div className="w-16 h-16 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-black/80 backdrop-blur-2xl border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <Link to="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-2xl">
-              <Award size={20} className="text-black" />
-            </div>
-            <span className="font-semibold text-xl">Aurin</span>
-          </Link>
-
-          <Link
-            to="/dashboard"
-            className="px-6 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
-      </nav>
-
-      <div className="pt-24 pb-12 px-6 max-w-[1400px] mx-auto">
+    <div className="min-h-screen bg-black text-white pt-28">
+      <SteveJobsNavbar />
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 md:py-12">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Settings</h1>
           <p className="text-gray-400">Manage your account and preferences</p>
