@@ -108,6 +108,22 @@ export async function verifyOrganizer(userId: string) {
   if (error) throw error;
 }
 
+export async function verifyEvent(eventId: string) {
+  const { error } = await (supabase.from('events') as any)
+    .update({ event_verified: true })
+    .eq('id', eventId);
+
+  if (error) throw error;
+}
+
+export async function rejectEvent(eventId: string) {
+  const { error } = await (supabase.from('events') as any)
+    .update({ status: 'cancelled', event_verified: false })
+    .eq('id', eventId);
+
+  if (error) throw error;
+}
+
 export async function deleteEvent(eventId: string) {
   const { error } = await supabase
     .from('events')

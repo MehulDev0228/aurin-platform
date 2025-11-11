@@ -215,6 +215,51 @@ export async function createOrganizerProfile(profileData: any) {
 export async function issueBadgeToAttendee(enrollmentId: string, badgeId: string, userId: string) {
   const { mintBadgeNFT } = await import('./blockchain');
 
+  // Get enrollment with event details
+  const { data: enrollment, error: enrollmentError } = await supabase
+    .from('event_enrollments')
+    .select('event_id')
+    .eq('id', enrollmentId)
+    .single();
+
+  if (enrollmentError || !enrollment) {
+    throw new Error('Enrollment not found');
+  }
+
+  // Get event details
+  const { data: event, error: eventError } = await supabase
+    .from('events')
+    .select('organizer_id, event_verified')
+    .eq('id', enrollment.event_id)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error('Event not found');
+  }
+
+  // Get organizer profile
+  const { data: organizerProfile, error: organizerError } = await supabase
+    .from('organizer_profiles')
+    .select('verified_organizer')
+    .eq('user_id', event.organizer_id)
+    .single();
+
+  // SECURITY CHECKS:
+  // 1. Prevent self-issuance (organizer cannot issue badge to themselves)
+  if (event.organizer_id === userId) {
+    throw new Error('Organizers cannot issue badges to themselves');
+  }
+
+  // 2. Check organizer is verified
+  if (!organizerProfile?.verified_organizer) {
+    throw new Error('Only verified organizers can issue badges. Please wait for admin verification.');
+  }
+
+  // 3. Check event is verified
+  if (!event.event_verified) {
+    throw new Error('Event must be verified by admin before badges can be issued.');
+  }
+
   const { data: badge } = await supabase
     .from('badges')
     .select('name, description, image_url')
@@ -227,8 +272,13 @@ export async function issueBadgeToAttendee(enrollmentId: string, badgeId: string
     .eq('id', userId)
     .single() as { data: { wallet_address: string | null } | null };
 
-  if (!badge?.data || !profile?.data?.wallet_address) {
-    throw new Error('Missing badge or wallet information');
+  if (!badge?.data) {
+    throw new Error('Badge not found');
+  }
+
+  // MANDATORY: Wallet address required for on-chain minting
+  if (!profile?.data?.wallet_address) {
+    throw new Error('Wallet address required. Please connect your wallet to receive badges.');
   }
 
   const mintResult = await mintBadgeNFT(
@@ -257,14 +307,14 @@ export async function issueBadgeToAttendee(enrollmentId: string, badgeId: string
 
   if (achievementError) throw achievementError;
 
-  const { error: enrollmentError } = await (supabase.from('event_enrollments') as any)
+  const { error: enrollmentUpdateError } = await (supabase.from('event_enrollments') as any)
     .update({
       badge_issued: true,
       status: 'completed'
     })
     .eq('id', enrollmentId);
 
-  if (enrollmentError) throw enrollmentError;
+  if (enrollmentUpdateError) throw enrollmentUpdateError;
 
   return achievement;
 }

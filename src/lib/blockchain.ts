@@ -103,9 +103,10 @@ export async function mintBadgeNFT(
   badgeImageUrl: string
 ): Promise<{ success: boolean; tokenId?: string; transactionHash?: string; error?: string }> {
   try {
+    // MANDATORY: Blockchain minting is required for v1 production
+    // No achievement exists without token_id + tx_hash
     if (!blockchainEnabled()) {
-      // If blockchain is disabled, return success without minting
-      return { success: true };
+      throw new Error('Blockchain minting is required. Please ensure blockchain is enabled and wallet is connected.');
     }
 
     // Create token URI metadata

@@ -1,7 +1,8 @@
 // src/pages/Explore.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Calendar, ChevronLeft, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Search, Filter, Calendar, ChevronLeft, ChevronRight, RefreshCw, AlertCircle, TrendingUp, Award, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { parseError, retryWithBackoff } from '../lib/errorHandler';
@@ -173,6 +174,48 @@ export default function Explore() {
               {loading ? 'Loading…' : (filtersDesc || `All events • ${total} results`)}
             </div>
           </div>
+        </div>
+
+        {/* Top This Week & Legendary Drops */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          {/* Top This Week */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <TrendingUp size={24} className="text-emerald-400" />
+              <h3 className="text-xl font-bold">Top This Week</h3>
+            </div>
+            <p className="text-gray-400 text-sm mb-4">
+              Most popular events this week. Join the community!
+            </p>
+            <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
+              <Sparkles size={16} />
+              <span>Updated daily</span>
+            </div>
+          </motion.div>
+
+          {/* Legendary Drops */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="card bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Award size={24} className="text-yellow-400" />
+              <h3 className="text-xl font-bold">Legendary Drops</h3>
+            </div>
+            <p className="text-gray-400 text-sm mb-4">
+              First 100 check-ins this week get Legendary badges!
+            </p>
+            <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium">
+              <Sparkles size={16} />
+              <span>Limited supply</span>
+            </div>
+          </motion.div>
         </div>
 
         {/* Grid */}

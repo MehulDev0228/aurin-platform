@@ -13,6 +13,7 @@ import PublicProfile from './pages/PublicProfile';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
 import Explore from './pages/Explore';
+import MyProof from './pages/MyProof';
 import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import Admin from './pages/Admin';
@@ -38,6 +39,7 @@ function AppRoutes() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/email-verification" element={<ProtectedRoute><PremiumEmailVerification /></ProtectedRoute>} />
       <Route path="/explore" element={<Explore />} />
+      <Route path="/my-proof" element={<ProtectedRoute><MyProof /></ProtectedRoute>} />
       <Route path="/events" element={<Events />} />
       <Route path="/events/:id" element={<EventDetail />} />
 

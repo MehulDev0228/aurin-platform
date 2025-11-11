@@ -230,6 +230,14 @@ export default function PublicProfile() {
                 <div>
                   <h1 className="text-4xl font-bold mb-2">{profile.full_name || profile.username}</h1>
                   <p className="text-xl text-gray-400">@{profile.username}</p>
+                  {profile.proofscore !== undefined && profile.proofscore !== null && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
+                        {Math.round(profile.proofscore)}
+                      </div>
+                      <div className="text-sm text-gray-400">ProofScore™</div>
+                    </div>
+                  )}
                 </div>
 
                 <button

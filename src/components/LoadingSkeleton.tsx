@@ -1,5 +1,4 @@
 // src/components/LoadingSkeleton.tsx - Loading skeleton components
-import { motion } from 'framer-motion';
 
 export function DashboardSkeleton() {
   return (

@@ -2,7 +2,7 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, User, Wallet, LogOut, LogIn, Sparkles, Crown, Award } from 'lucide-react';
+import { Menu, X, User, Wallet, LogOut, LogIn, Sparkles, Award } from 'lucide-react';
 
 function useAuthOptional(): { user: any; signOut?: () => Promise<void> } | null {
   try {
